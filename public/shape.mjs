@@ -1,5 +1,5 @@
 /** Geometry-based return detection, independent of OSM edge IDs.
- * Resample every 10 m. Detect opposing travel within 25 m; exclude adjacent
+ * Resample every 10 m. Detect opposing travel within 100 m; exclude adjacent
  * samples so ordinary corners and dense map vertices do not inflate penalties.
  */
 export function shapeFeatures(coordinates) {
@@ -38,15 +38,15 @@ export function shapeFeatures(coordinates) {
     const p = samples[i],
       before = samples[i - 1],
       direction = [p[0] - before[0], p[1] - before[1]];
-    const x = Math.floor(p[0] / 25),
-      y = Math.floor(p[1] / 25);
+    const x = Math.floor(p[0] / 100),
+      y = Math.floor(p[1] / 100);
     let matched = false;
     for (let dx = -1; dx <= 1; dx++)
       for (let dy = -1; dy <= 1; dy++) {
         for (const old of grid.get(`${x + dx},${y + dy}`) || []) {
           if (
             i - old.i > 6 &&
-            Math.hypot(p[0] - old.p[0], p[1] - old.p[1]) <= 25 &&
+            Math.hypot(p[0] - old.p[0], p[1] - old.p[1]) <= 100 &&
             cosine(direction, old.direction) < -0.85
           )
             matched = true;

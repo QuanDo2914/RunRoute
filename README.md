@@ -70,7 +70,7 @@ Replace coarse elevation with a proper local DEM and validate against known rout
 
 Version 3 makes fewer turns and fewer mapped traffic lights permanent preferences. Rank is `100 * exp(-cost)`, with cost = `2 * distanceError + .05 * lights + .018 * turns + .1 * Uturns + 1.3 * max(repeatFraction, nearReturnFraction) + .15 * terrainPenalty + .1 * (1 - pathFraction)`. Raw scores determine ordering; rounded scores are display-only. Holding other features constant, fewer turns or lights always improves rank. This is not a lexicographic guarantee when distance or other features differ.
 
-Geometry is resampled every 10 m; opposing travel within 25 m and over 60 m apart along the route counts as nearby doubling back. Turns use smoothed 20 m heading windows and a 60° threshold. U-turns use 30 m windows and a 150° threshold. Normal right-angle turns carry a small turn cost, but are regression-tested not to receive U-turn/near-return penalties. Tolerances are heuristics, not a learned model.
+Geometry is resampled every 10 m; opposing travel within 100 m and over 60 m apart along the route counts as nearby doubling back. Turns use smoothed 20 m heading windows and a 60° threshold. U-turns use 30 m windows and a 150° threshold. Normal right-angle turns carry a small turn cost, but are regression-tested not to receive U-turn/near-return penalties. Tolerances are heuristics, not a learned model.
 
 ## Following a selected route
 

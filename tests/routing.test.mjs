@@ -110,8 +110,8 @@ test("ordinary right angle streets and separated parallel roads are not reversal
     ll([
       [0, 0],
       [0, 300],
-      [100, 300],
-      [100, 0],
+      [200, 300],
+      [200, 0],
     ]),
   );
   assert.equal(f.uTurns, 0);
@@ -165,3 +165,5 @@ test("fewer ordinary turns and lights always improve the unrounded rank", () => 
     ).turns >= 2,
   );
 });
+
+test("narrow U-shaped street detours also receive a return penalty",()=>{const shape=shapeFeatures(ll([[0,0],[0,500],[80,500],[80,0]]));assert.ok(shape.nearRetraceFraction>.25);});
