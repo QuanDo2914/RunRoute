@@ -1,0 +1,44 @@
+{
+  "id": "urbana-champaign",
+  "name": "Urbana–Champaign, IL",
+  "bounds": [
+    40.06,
+    -88.31,
+    40.15,
+    -88.17
+  ],
+  "addressUrl": "/data/urbana-champaign-addresses.json",
+  "graphUrl": "/data/urbana-champaign.json",
+  "places": [
+    {
+      "name": "University of Illinois Main Quad",
+      "lat": 40.1075,
+      "lon": -88.2272
+    },
+    {
+      "name": "Crystal Lake Park",
+      "lat": 40.12,
+      "lon": -88.207
+    },
+    {
+      "name": "Meadowbrook Park",
+      "lat": 40.083,
+      "lon": -88.2072
+    },
+    {
+      "name": "Hessel Park",
+      "lat": 40.0988,
+      "lon": -88.2468
+    },
+    {
+      "name": "Downtown Champaign · West Side Park",
+      "lat": 40.117,
+      "lon": -88.2488
+    },
+    {
+      "name": "Japan House & Arboretum",
+      "lat": 40.0925,
+      "lon": -88.217
+    }
+  ]
+}
