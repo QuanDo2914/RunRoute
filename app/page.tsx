@@ -104,7 +104,7 @@ export default function Home() {
         setMessage(
           e.data.routes.length
             ? ""
-            : "No route within 25% of that distance. Try another start, distance, or allow traffic lights.",
+            : "No smooth route between your target and 5% longer was found. Try another start, distance, or allow traffic lights.",
         );
       }
     };
@@ -119,6 +119,7 @@ export default function Home() {
   useEffect(()=>{setResolvedStart(null);setResolvedEnd(null);const id=++snapId.current;worker.current?.postMessage({kind:"snap",id,url:region.graphUrl,request:{start,end:mode==="point"?end:null}});},[start,end,mode]);
   useEffect(() => {
     setReady(false);
+    let active=true;
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = "/vendor/leaflet.css";
@@ -126,7 +127,7 @@ export default function Home() {
     const script = document.createElement("script");
     script.src = "/vendor/leaflet.js";
     script.onload = () => {
-      if (map.current) return;
+      if (!active || map.current || !document.getElementById("route-map")) return;
       const L = window.L;
       map.current = L.map("route-map", { zoomControl: false }).setView(
         [40.109, -88.235],
@@ -173,6 +174,9 @@ export default function Home() {
       );
     document.body.appendChild(script);
     return () => {
+      active=false;
+      script.onload=null;
+      script.onerror=null;
       map.current?.remove();
       map.current = null;
       script.remove();
@@ -298,7 +302,7 @@ export default function Home() {
           distanceError: run.distanceError,
         },
         request: { distance, terrain, avoid, mode },
-        rankingVersion: "rules-v3-flow",
+        rankingVersion: "rules-v4-smooth",
       };
       localStorage.setItem(
         "runroute-feedback-v1",
@@ -566,13 +570,13 @@ export default function Home() {
                     : "Your route starts here"}
                 </h2>
               </div>
-              <span className="ranking-label">Explainable ranking · v3</span>
+              <span className="ranking-label">Smoother routes · up to 7 options</span>
             </div>
             <div role="status" aria-live="polite">
               {message && <p className="notice">{message}</p>}
               {busy && (
                 <p className="notice">
-                  Searching the pedestrian network and comparing distances,
+                  Searching for up to 7 smoother routes and comparing distances,
                   paths, and crossings…
                 </p>
               )}
@@ -608,7 +612,7 @@ export default function Home() {
                   <div className="metrics">
                     <div>
                       <strong>{(r.distance / 1000).toFixed(2)}</strong>
-                      <span>km total</span>
+                      <span>km mapped ≈</span>
                     </div>
                     <div>
                       <strong>
@@ -681,6 +685,11 @@ export default function Home() {
                         may not offer the hills you want.
                       </p>
                     )}
+                  <p className="helper">
+                    Mapped distance is an estimate, not a certified course length.
+                    Watch GPS and the path you actually run can differ. Routes meet
+                    your target on the map, up to 5% longer; watch distance is not guaranteed.
+                  </p>
                   <p className="helper">
                     {run.turns} turns · {run.uTurns} sharp reversals ·{" "}
                     {Math.round(run.nearRetraceFraction * 100)}% doubling back ·

@@ -166,7 +166,7 @@ test("fewer ordinary turns and lights always improve the unrounded rank", () => 
   );
 });
 
-test("narrow U-shaped street detours also receive a return penalty",()=>{const shape=shapeFeatures(ll([[0,0],[0,500],[80,500],[80,0]]));assert.ok(shape.nearRetraceFraction>.25);});
+test("narrow U-shaped street detours also receive a return penalty",()=>{const shape=shapeFeatures(ll([[0,0],[0,500],[80,500],[80,0]]));assert.ok(shape.nearRetraceFraction>.25);assert.ok(shape.maxNearRetraceMeters>200);});
 import {snapEndpoint} from '../lib/routing/snap.mjs';
 test('address frontage beats a closer rear alley and snaps between vertices',()=>{
  const nodes=[{id:1,lat:40,lon:-88.002},{id:2,lat:40,lon:-87.998},{id:3,lat:40.001,lon:-88.002},{id:4,lat:40.001,lon:-87.998}];
@@ -175,3 +175,20 @@ test('address frontage beats a closer rear alley and snaps between vertices',()=
  assert.ok(Math.abs(s.node.lat-40)<1e-8);assert.ok(Math.abs(s.node.lon+88)<1e-8);assert.equal(s.description,'West Main Street');assert.ok(shortest(g,1,2).includes('snap:start'));assert.deepEqual(shortest(original,1,2),[1,2]);
 });
 test('splitting a one-way segment preserves direction and supports two endpoints',()=>{const g=graphFrom({nodes:[{id:1,lat:40,lon:-88},{id:2,lat:40.01,lon:-88}],ways:[{nodes:[1,2],kind:'footway',footOneWay:'yes'}]});const a=snapEndpoint(g,{lat:40.002,lon:-88},'a');const b=snapEndpoint(g,{lat:40.008,lon:-88},'b');assert.deepEqual(shortest(g,'a','b'),['a','b']);assert.equal(shortest(g,'b','a'),null);assert.equal(g.get(1).edges[0].to,'a');});
+
+test('path search chooses a slightly longer straight corridor over a staircase',()=>{
+  const coords=[[0,0]];
+  for(let i=0;i<10;i++) {coords.push([(i+1)*50,i*50],[(i+1)*50,(i+1)*50]);}
+  const nodes=ll(coords).map(([lat,lon],id)=>({id,lat,lon}));
+  const smooth=ll([[0,520],[500,520]]).map(([lat,lon],i)=>({id:100+i,lat,lon}));
+  const g=graphFrom({nodes:[...nodes,...smooth],ways:[{nodes:nodes.map(n=>n.id),kind:'footway'},{nodes:[0,100,101,20],kind:'footway'}]});
+  assert.deepEqual(shortest(g,0,20),[0,100,101,20]);
+});
+test('used edges cannot be reused to fill a route with a spur',()=>{
+  const g=graphFrom(fixture);
+  assert.deepEqual(shortest(g,1,3,false,new Set(['1:4'])),[1,2,3]);
+});
+test('reported distance is measured from geometry even if edge weights differ',()=>{
+  const g=graphFrom(fixture);g.get(1).edges[0].length*=2;
+  assert.ok(Math.abs(features(g,[1,2],100).distance-meters(g.get(1),g.get(2)))<1e-9);
+});

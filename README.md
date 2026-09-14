@@ -27,7 +27,11 @@ The UI accepts predefined places, latitude/longitude, a map click, or browser ge
 
 ## Routing and baseline ranking
 
-Loop search samples 36 pairs of geographic waypoints at three radii, joins shortest pedestrian paths, and penalizes already-used edges during subsequent legs. Point-to-point search includes the direct route and detours. Routes must be within 25% of requested distance; no feasible candidate is a normal empty result. Suggestions are deduplicated by edge set and filtered for node overlap.
+Loop search explores triangular and rectangular layouts at 16 bearings and multiple aspect ratios, with four distance-fitting attempts per layout (up to 384 attempts, with duplicate stop sequences cached). Point-to-point search includes the direct path and fitted detours. A* search keeps the incoming edge in its state and charges for bends and mapped lights while finding paths, rather than only scoring turns afterward. Already-used edges are excluded on subsequent legs. Degree-two chains are contracted for search, preserving all original vertices, traversal directions, internal bend costs and distances for route reconstruction.
+
+Every recommendation must measure at least the target and no more than 5% over it. All alternatives must have zero detected sharp U-turns, at most 1% repeated geometry, at most 3% nearby opposing travel and no continuous detected return longer than 60 m. Turns are capped at max(8, 3 per target km), so a 5K has at most 15 detected turns. The search returns up to seven diverse routes; fewer or zero is a normal result when the mapped network cannot satisfy these limits. In particular, starts reached through a narrow access spur may have no acceptable loop. The app never pads the list with routes that fail the gates.
+
+Distance is the sum of Haversine lengths of the exact displayed/exported coordinates. Navigation uses the same geometry; GPX rounds coordinates to seven decimal places. This is a mapped estimate, not a certified course or a promise about watch GPS. The reported 5.02 km versus 4.93 km field result cannot be attributed to a specific cause without the original route and recorded watch track; the app does not apply an invented calibration factor.
 
 Distances use Haversine sums over actual mapped geometry. Mapped signals are a hard exclusion when requested. Known pedestrian one-way restrictions are respected. Paths receive a modest cost preference. Secondary/tertiary roads require explicitly mapped sidewalks. Private access, prohibited foot access, motorways, parking aisles and driveways are excluded during import.
 
@@ -64,18 +68,10 @@ Hard constraints always stay in the routing layer. A ranking model can reorder f
 
 ## Next engineering milestone
 
-Replace coarse elevation with a proper local DEM and validate against known routes; contract degree-two graph chains while preserving geometry, signals and ascent; measure success rate/distance fit across a regional benchmark. Only then add persistent feedback and a trained preference model. This keeps the portfolio story grounded in measurable product improvements.
+Replace coarse elevation with a proper local DEM and validate against known routes; measure success rate/distance fit across a regional benchmark. Only then add persistent feedback and a trained preference model. This keeps the portfolio story grounded in measurable product improvements.
 
 ## Route shape preference
 
-Version 3 makes fewer turns and fewer mapped traffic lights permanent preferences. Rank is `100 * exp(-cost)`, with cost = `2 * distanceError + .05 * lights + .018 * turns + .1 * Uturns + 1.3 * max(repeatFraction, nearReturnFraction) + .15 * terrainPenalty + .1 * (1 - pathFraction)`. Raw scores determine ordering; rounded scores are display-only. Holding other features constant, fewer turns or lights always improves rank. This is not a lexicographic guarantee when distance or other features differ.
+Version 4 favors smooth paths during generation and ranking. Rank is `100 * exp(-cost)`, with cost = `4 * distanceError + .08 * lights + .055 * turns + .4 * Uturns + 3 * max(repeatFraction, nearRetraceFraction) + .15 * terrainPenalty + .1 * (1 - pathFraction)`. Raw scores determine ordering; rounded scores are display-only. Holding other features constant, fewer turns or lights always improves rank. Search separately charges 140 equivalent meters times `(1 - cos(bend))`, another 250 for sharp reversals, and 65 per mapped signal node entered. These are heuristic preference costs, never added to the reported distance.
 
-Geometry is resampled every 10 m; opposing travel within 100 m and over 60 m apart along the route counts as nearby doubling back. Turns use smoothed 20 m heading windows and a 60° threshold. U-turns use 30 m windows and a 150° threshold. Normal right-angle turns carry a small turn cost, but are regression-tested not to receive U-turn/near-return penalties. Tolerances are heuristics, not a learned model.
-
-## Following a selected route
-
-`RouteActivity` offers live browser navigation or a standard GPX 1.1 track download. GPX retains all route coordinates and can be imported into compatible device software; vendor-specific watch synchronization is outside this app.
-
-Live navigation asks for browser geolocation only when the runner starts it. GPS matching is constrained to the neighborhood of current progress to avoid jumping to a loop finish or distant self-intersection. Weak GPS (accuracy worse than 40 m) and off-route fixes freeze progress. Position watches are cleared on stop, completion, route change and unmount. No location telemetry is uploaded by the app. A native mobile implementation is the next step for dependable background GPS, screen-lock behavior and spoken directions.
-
-Tests simulate complete GPS walks, poor accuracy, off-route points, loop starts, left/right prompts and GPX coordinate preservation. Field validation on an actual run remains necessary before calling live navigation production-ready.
+Regression tests cover smoother-path selection, one-way preservation, signal avoidance, route endpoint alignment, all-alternative quality limits, and distance agreement between the route, navigation and exported GPX. Outdoor GPS accuracy remains a field-validation task.
