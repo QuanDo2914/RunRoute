@@ -51,22 +51,26 @@ export function LocationPicker({
     setMatches([]);
   }, [display]);
   function choose(p: Point) {
+    searchId.current++;
+    setBusy(false);
+    setSearchError("");
     setText(p.name || `${p.lat}, ${p.lon}`);
     onChange(p);
     onPendingChange(false);
     setOpen(false);
     setSearched(false);
   }
-  async function search() {
-    if (text.trim().length < 3) {
+  async function search(query = text, explicit = true) {
+    if (query.trim().length < 3) {
       setSearchError("Enter a street address, including the house number.");
       return;
     }
-    const parts = text.split(",").map((s) => s.trim());
+    const parts = query.split(",").map((s) => s.trim());
     if (
       parts.length === 2 &&
       parts.every((s) => s.length && Number.isFinite(Number(s)))
     ) {
+      if (!explicit) { setBusy(false); return; }
       const p = { lat: Number(parts[0]), lon: Number(parts[1]) };
       if (insideRegion(p)) choose(p);
       else onError("Choose coordinates inside the coverage area.");
@@ -75,6 +79,7 @@ export function LocationPicker({
     const id = ++searchId.current;
     setBusy(true);
     setSearchError("");
+    if (explicit) setOpen(true);
     try {
       if (!addressData)
         addressData = fetch(region.addressUrl)
@@ -87,35 +92,49 @@ export function LocationPicker({
             addressData = null;
             throw e;
           });
-      const results = searchAddresses(await addressData, text);
+      const results = searchAddresses([...region.places, ...await addressData], query);
       if (id !== searchId.current) return;
       setMatches(results);
       setSearched(true);
-      setOpen(true);
     } catch {
+      if (id !== searchId.current) return;
       setSearchError(
         "Address search could not load. You can still choose a place or pick on the map.",
       );
     } finally {
-      setBusy(false);
+      if (id === searchId.current) setBusy(false);
     }
   }
-  const options = searched ? matches : region.places;
+  useEffect(() => {
+    if (text === display || text.trim().length < 3) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    const timer = setTimeout(() => { void search(text, false); }, 200);
+    return () => clearTimeout(timer);
+  }, [text, display]);
+  const options = searched ? matches : text === display || !text.trim()
+    ? region.places
+    : region.places.filter(p => p.name.toLowerCase().includes(text.toLowerCase()));
   return (
     <div>
       <Combobox
         items={options.map((p) => p.name!)}
         filter={null}
-        autoHighlight={false}
+        autoHighlight={true}
         value={point.name ?? null}
         inputValue={text}
         open={open}
         onOpenChange={setOpen}
         onInputValueChange={(v, details) => {
-          setText(v);
-          if (details.reason === "input-change") {
+          if (details.reason === "input-change" || details.reason === "input-clear") {
+            setText(v);
             searchId.current++;
-            setSearched(false);
+            setSearched(v.trim().length >= 3);
+            setSearchError("");
+            setBusy(v.trim().length >= 3);
+            setOpen(true);
             setMatches([]);
             onPendingChange(v !== display);
           }
@@ -130,19 +149,22 @@ export function LocationPicker({
           aria-label={label}
           placeholder="Enter an address or choose a place"
           onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              (!open || (!searched && text !== display))
-            ) {
-              e.preventDefault();
-              search();
-            }
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            (e as typeof e & {preventBaseUIHandler?: () => void}).preventBaseUIHandler?.();
+            const activeId=e.currentTarget.getAttribute("aria-activedescendant");
+            const activeName=activeId?document.getElementById(activeId)?.textContent?.trim():null;
+            const highlighted=options.find(p=>p.name===activeName);
+            const selection=open && !busy ? highlighted ?? options[0] : null;
+            if(selection) choose(selection);
+            else void search();
           }}
         />
         <ComboboxContent className="place-options">
           <ComboboxEmpty>
-            No matching address in this area. Try the street number and name, or
-            pick on the map.
+            {busy ? "Searching addresses…" : searchError || (text.trim().length < 3
+              ? "Type at least 3 characters to find an address."
+              : "No matching address in this area. Try the street number and name, or pick on the map.")}
           </ComboboxEmpty>
           <ComboboxList>
             {(item: string) => (
@@ -154,14 +176,14 @@ export function LocationPicker({
         </ComboboxContent>
       </Combobox>
       <div className="address-search-row">
-        <button className="address-search" disabled={busy} onClick={search}>
+        <button className="address-search" disabled={busy} onClick={() => search()}>
           <Search size={14} />
           {busy ? "Searching…" : "Search address"}
         </button>
         <span>Private, on-device search</span>
       </div>
       {text !== display && (
-        <p className="helper">Search your address, then select a match.</p>
+        <p className="helper">Choose a suggestion as you type, or press Enter to search.</p>
       )}
       {searchError && (
         <p className="helper" role="status">
