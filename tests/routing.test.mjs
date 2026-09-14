@@ -167,3 +167,11 @@ test("fewer ordinary turns and lights always improve the unrounded rank", () => 
 });
 
 test("narrow U-shaped street detours also receive a return penalty",()=>{const shape=shapeFeatures(ll([[0,0],[0,500],[80,500],[80,0]]));assert.ok(shape.nearRetraceFraction>.25);});
+import {snapEndpoint} from '../lib/routing/snap.mjs';
+test('address frontage beats a closer rear alley and snaps between vertices',()=>{
+ const nodes=[{id:1,lat:40,lon:-88.002},{id:2,lat:40,lon:-87.998},{id:3,lat:40.001,lon:-88.002},{id:4,lat:40.001,lon:-87.998}];
+ const original=graphFrom({nodes,ways:[{nodes:[1,2],kind:'residential',name:'West Main Street'},{nodes:[3,4],kind:'service',name:'Stoughton Alley'}]});
+ const g=new Map(original),p={lat:40.0008,lon:-88,name:'1004 West Main Street, Urbana'};const s=snapEndpoint(g,p,'snap:start');
+ assert.ok(Math.abs(s.node.lat-40)<1e-8);assert.ok(Math.abs(s.node.lon+88)<1e-8);assert.equal(s.description,'West Main Street');assert.ok(shortest(g,1,2).includes('snap:start'));assert.deepEqual(shortest(original,1,2),[1,2]);
+});
+test('splitting a one-way segment preserves direction and supports two endpoints',()=>{const g=graphFrom({nodes:[{id:1,lat:40,lon:-88},{id:2,lat:40.01,lon:-88}],ways:[{nodes:[1,2],kind:'footway',footOneWay:'yes'}]});const a=snapEndpoint(g,{lat:40.002,lon:-88},'a');const b=snapEndpoint(g,{lat:40.008,lon:-88},'b');assert.deepEqual(shortest(g,'a','b'),['a','b']);assert.equal(shortest(g,'b','a'),null);assert.equal(g.get(1).edges[0].to,'a');});

@@ -19,7 +19,9 @@ import { LocationPicker } from "@/components/runroute/location-picker";
 
 type Point = { lat: number; lon: number; name?: string };
 type Run = {
-  ids: number[];
+  ids: (number|string)[];
+  startLocation: Point & {description:string};
+  endLocation: Point & {description:string};
   coordinates: number[][];
   distance: number;
   gain: number | null;
@@ -63,6 +65,8 @@ export default function Home() {
   pickRef.current = pick;
   const [pendingStart, setPendingStart] = useState(false),
     [pendingEnd, setPendingEnd] = useState(false);
+  const [resolvedStart,setResolvedStart]=useState<(Point & {description:string})|null>(null),[resolvedEnd,setResolvedEnd]=useState<(Point & {description:string})|null>(null);
+  const snapId=useRef(0);
   const userMarker = useRef<any>(null);
   const run = runs[selected];
   function invalidate() {
@@ -90,6 +94,7 @@ export default function Home() {
     const w = new Worker("/routing-worker.js", { type: "module" });
     worker.current = w;
     w.onmessage = (e) => {
+      if(e.data.kind==="snap"){if(e.data.id!==snapId.current)return;if(e.data.error){setMessage(e.data.error);return;}setResolvedStart(e.data.start);setResolvedEnd(e.data.end);return;}
       if (e.data.id !== requestId.current) return;
       setBusy(false);
       if (e.data.error) setMessage(e.data.error);
@@ -111,6 +116,7 @@ export default function Home() {
     };
     return () => w.terminate();
   }, []);
+  useEffect(()=>{setResolvedStart(null);setResolvedEnd(null);const id=++snapId.current;worker.current?.postMessage({kind:"snap",id,url:region.graphUrl,request:{start,end:mode==="point"?end:null}});},[start,end,mode]);
   useEffect(() => {
     setReady(false);
     const link = document.createElement("link");
@@ -178,8 +184,8 @@ export default function Home() {
     const L = window.L;
     markers.current.clearLayers();
     for (const [p, label] of [
-      [start, "A"],
-      ...(mode === "point" ? [[end, "B"]] : []),
+      [run?.startLocation || resolvedStart || start, "A"],
+      ...(mode === "point" ? [[run?.endLocation || resolvedEnd || end, "B"]] : []),
     ] as [Point, string][]) {
       L.marker([p.lat, p.lon], {
         icon: L.divIcon({
@@ -190,7 +196,7 @@ export default function Home() {
         }),
       }).addTo(markers.current);
     }
-  }, [ready, start, end, mode]);
+  }, [ready, start, end, mode, run, resolvedStart, resolvedEnd]);
   useEffect(() => {
     if (!ready) return;
     layer.current.clearLayers();
@@ -374,6 +380,7 @@ export default function Home() {
               }}
               onError={setMessage}
             />
+            {resolvedStart&&<p className="helper">Start: {resolvedStart.description}</p>}
             <button
               className="locate text-button"
               onClick={() => {
@@ -539,8 +546,8 @@ export default function Home() {
                   : "Click the map to set your destination"}
               </strong>
             </div>
-            <div className="map-key">
-              <i /> Suggested route <b>A</b> Start{" "}
+            <div className="map-key" title="The route follows mapped sidewalks and paths; these may run beside the street centerline.">
+              <i /> Running route <b>A</b> Start{" "}
               {mode === "point" && (
                 <>
                   <b>B</b> Finish
@@ -549,6 +556,7 @@ export default function Home() {
             </div>
           </div>
           <div className="results">
+            <p className="helper">Route lines follow mapped sidewalks and paths, which may sit beside the street.</p>
             <div className="results-heading">
               <div>
                 <div className="eyebrow">MADE FOR YOUR RUN</div>
@@ -659,7 +667,7 @@ export default function Home() {
                     {run.gain === null
                       ? "Elevation unavailable; terrain preference could not be evaluated."
                       : `${run.gain / run.distance > 0.01 ? "Rolling" : "Mostly flat"} · Elevation estimated from a coarse terrain grid.`}{" "}
-                    Start snapped {Math.round(run.snapStart)} m to the network
+                    {run.startLocation.description}. Start adjusted {Math.round(run.snapStart)} m from the selected location
                     {mode === "point"
                       ? `; destination ${Math.round(run.snapEnd)} m`
                       : ""}

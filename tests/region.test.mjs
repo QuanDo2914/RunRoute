@@ -1,3 +1,4 @@
+import {snapEndpoint} from "../lib/routing/snap.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -15,14 +16,15 @@ for (const avoid of [false, true])
     test(`${endpoint ? "point-to-point" : "loop"} real network, avoid=${avoid}`, () => {
       const routes = generate(g, { start, end: endpoint, target: 5000, avoid });
       assert.ok(routes.length > 0);
-      for (const r of routes) {
-        assert.equal(r.ids[0], nearest(g, start).node.id);
-        assert.equal(r.ids.at(-1), nearest(g, endpoint || start).node.id);
+      const network=new Map(g);const expectedStart=snapEndpoint(network,start,"snap:start");const expectedEnd=endpoint?snapEndpoint(network,endpoint,"snap:end"):expectedStart;
+    for (const r of routes) {
+        assert.equal(r.ids[0], expectedStart.node.id);
+        assert.equal(r.ids.at(-1), expectedEnd.node.id);
         assert.ok(r.distanceError <= 0.25);
         assert.ok(Number.isFinite(r.gain));
         if (avoid) assert.equal(r.signals, 0);
         for (let i = 1; i < r.ids.length; i++)
-          assert.ok(g.get(r.ids[i - 1]).edges.some((e) => e.to === r.ids[i]));
+          assert.ok(network.get(r.ids[i - 1]).edges.some((e) => e.to === r.ids[i]));
         for (const [lat, lon] of r.coordinates)
           assert.ok(
             lat >= data.bounds[0] &&
@@ -38,3 +40,4 @@ test("regional snapshot contains attribution and real elevations", () => {
   assert.ok(data.nodes.length > 1000);
   assert.ok(data.nodes.every((n) => Number.isFinite(n.elevation)));
 });
+test('West Main Street address starts on its frontage sidewalk, not Stoughton Alley',()=>{const addresses=JSON.parse(fs.readFileSync(new URL('../public/data/urbana-champaign-addresses.json',import.meta.url))).addresses;const address=addresses.find(a=>a.name==='1004 West Main Street, Urbana, 61801');const snap=snapEndpoint(new Map(g),address,'snap:start');assert.equal(snap.description,'Sidewalk along West Main Street');assert.ok(snap.node.lat<address.lat);assert.ok(snap.distance<20);});

@@ -18,7 +18,7 @@ for w in raw['elements']:
  if t.get('service') in ('driveway','parking_aisle'):continue
  ids=[i for i in w['nodes'] if i in nodes]
  if len(ids)<2:continue
- ways.append({'id':w['id'],'nodes':ids,'kind':h,'name':t.get('name',''),'footOneWay':t.get('oneway:foot')})
+ ways.append({'id':w['id'],'nodes':ids,'kind':h,'footway':t.get('footway'),'name':t.get('name',''),'footOneWay':t.get('oneway:foot')})
  used.update(ids)
 out={'region':config['id'],'bounds':config['bounds'],'source':'OpenStreetMap contributors, ODbL 1.0','timestamp':raw.get('osm3s',{}).get('timestamp_osm_base'),'nodes':[{ 'id':i,'lat':nodes[i]['lat'],'lon':nodes[i]['lon'],'signal':nodes[i].get('tags',{}).get('highway')=='traffic_signals' or nodes[i].get('tags',{}).get('crossing')=='traffic_signals' or nodes[i].get('tags',{}).get('crossing:signals')=='yes','elevation':None} for i in sorted(used)],'ways':ways}
 pathlib.Path('public'+config['graphUrl']).write_text(json.dumps(out,separators=(',',':')))
