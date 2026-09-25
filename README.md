@@ -75,3 +75,23 @@ Replace coarse elevation with a proper local DEM and validate against known rout
 Version 4 favors smooth paths during generation and ranking. Rank is `100 * exp(-cost)`, with cost = `4 * distanceError + .08 * lights + .055 * turns + .4 * Uturns + 3 * max(repeatFraction, nearRetraceFraction) + .15 * terrainPenalty + .1 * (1 - pathFraction)`. Raw scores determine ordering; rounded scores are display-only. Holding other features constant, fewer turns or lights always improves rank. Search separately charges 140 equivalent meters times `(1 - cos(bend))`, another 250 for sharp reversals, and 65 per mapped signal node entered. These are heuristic preference costs, never added to the reported distance.
 
 Regression tests cover smoother-path selection, one-way preservation, signal avoidance, route endpoint alignment, all-alternative quality limits, and distance agreement between the route, navigation and exported GPX. Outdoor GPS accuracy remains a field-validation task.
+
+## Netlify deployment
+
+RunRoute also has a standalone static Vite build. It reuses the same React app,
+route worker, local address index and regional graph, without a Cloudflare server
+or ChatGPT sign-in. The original hosting build remains available separately.
+
+```sh
+npm run build:netlify
+netlify deploy --prod --no-build --dir dist-netlify --site 14c88f79-a9b0-420f-a8a9-0853baae999e
+```
+
+Live site: https://runroute-uc.netlify.app
+
+`netlify.toml` specifies the build command, publish directory and Node version.
+`web/` contains the static HTML and React entry point; `vite.netlify.config.ts`
+handles bundling. Keep Netlify credentials and `.netlify/` out of Git. This site
+was deployed directly with the CLI; automatic GitHub deployment is not yet
+connected. Future Git-connected builds should use `npm run build:netlify` and
+`dist-netlify` as configured. GPS requires HTTPS and the user's location permission.

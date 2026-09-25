@@ -49,3 +49,7 @@ next-env.d.ts
 __pycache__/
 *.pyc
 *.tsbuildinfo
+
+# Netlify build output and account-specific local state
+/dist-netlify/
+/.netlify/

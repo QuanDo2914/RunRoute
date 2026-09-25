@@ -15,7 +15,8 @@
     "test": "node --test tests/routing.test.mjs tests/region.test.mjs tests/navigation.test.mjs",
     "typecheck": "tsc --noEmit",
     "prebuild": "node scripts/sync-routing.mjs",
-    "predev": "node scripts/sync-routing.mjs"
+    "predev": "node scripts/sync-routing.mjs",
+    "build:netlify": "node scripts/sync-routing.mjs && vite build --config vite.netlify.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
